@@ -14,67 +14,59 @@ DROP TABLE IF EXISTS Users;
 -- 1. CREATE USERS TABLE
 -- =========================================================================
 CREATE TABLE Users (
-  user_id int,
-  full_name varchar(100),
-  email varchar(100),
-  role varchar(50),
-  phone_number varchar(15),
-  
-  -- Write your constraint to make 'user_id' the Primary Key
-  CONSTRAINT pk_users PRIMARY KEY (user_id),
-  -- Write your constraint to ensure 'email' values are never duplicated
-  CONSTRAINT unique_email UNIQUE (email),
-  -- Write your check constraint to restrict 'role' to specific allowed strings
-  CONSTRAINT allowed_user_role CHECK (role IN ('Ticket Manager', 'Football Fan'))
+    user_id int,
+    full_name varchar(50),
+    email varchar(100),
+    role varchar(20),
+    phone_number varchar(20),
+    
+    -- Write your constraint to make 'user_id' the Primary Key
+    constraint pk_user_id primary key(user_id),
+    -- Write your constraint to ensure 'email' values are never duplicated
+    constraint uq_email unique(email),
+    -- Write your check constraint to restrict 'role' to specific allowed strings
+    constraint check_role check(role in ('Ticket Manager', 'Football Fan'))
 );
 
 -- =========================================================================
 -- 2. CREATE MATCHES TABLE
 -- =========================================================================
 CREATE TABLE Matches (
-  match_id serial,
-  fixture varchar(100),
-  tournament_category varchar(50),
-  base_ticket_price int,
-  match_status varchar(20),
-  -- Write your constraint to make 'match_id' the Primary Key
-  CONSTRAINT pk_match_id PRIMARY KEY (match_id),
-  -- Write your check constraint to prevent negative ticket prices
-  CONSTRAINT check_ticket_price CHECK (base_ticket_price >= 0),
-  -- Write your check constraint to restrict 'match_status' values
-  CONSTRAINT check_match_status CHECK (
-    match_status IN (
-      'Available',
-      'Selling Fast',
-      'Sold Out',
-      'Postponed'
-    )
-  )
+    match_id serial,
+    fixture varchar(100),
+    tournament_category varchar(100),
+    base_ticket_price int,
+    match_status varchar(20),
+    
+    -- Write your constraint to make 'match_id' the Primary Key
+    constraint pk_match_id primary key(match_id),
+    -- Write your check constraint to prevent negative ticket prices
+    constraint chk_ticket_price check(base_ticket_price >= 0),
+    -- Write your check constraint to restrict 'match_status' values
+    constraint chk_match_status check(match_status in ('Available','Selling Fast','Sold Out','Postponed'))
 );
-
 
 -- =========================================================================
 -- 3. CREATE BOOKINGS TABLE
 -- =========================================================================
 CREATE TABLE Bookings (
-  booking_id serial,
-  user_id int,
-  match_id int,
-  seat_number varchar(8),
-  payment_status varchar(15),
-  total_cost int,
-  -- Write your constraint to make 'booking_id' the Primary Key
-  CONSTRAINT pk_booking_id PRIMARY KEY (booking_id),
-  -- Write your Foreign Key constraint linking 'user_id' to the Users table
-  CONSTRAINT fk_booking_user_id FOREIGN key (user_id) REFERENCES USERS (user_id),
-  -- Write your Foreign Key constraint linking 'match_id' to the Matches table
-  CONSTRAINT fk_match_id FOREIGN key (match_id) REFERENCES MATCHES (match_id),
-  -- Write your check constraint to ensure 'total_cost' is non-negative
-  CONSTRAINT check_total_cost CHECK (total_cost >= 0),
-  -- Write your check constraint to restrict 'payment_status' values
-  CONSTRAINT check_payment_status CHECK (
-    payment_status IN ('Pending', 'Confirmed', 'Cancelled', 'Refunded')
-  )
+    booking_id serial,
+    user_id int,
+    match_id int,
+    seat_number varchar(10),
+    payment_status varchar(15),
+    total_cost int,
+    
+    -- Write your constraint to make 'booking_id' the Primary Key
+  constraint pk_booking_id primary key(booking_id),
+    -- Write your Foreign Key constraint linking 'user_id' to the Users table
+  constraint fk_user_id foreign key(user_id) references users(user_id),
+    -- Write your Foreign Key constraint linking 'match_id' to the Matches table
+  constraint fk_match_id foreign key(match_id) references matches(match_id),
+    -- Write your check constraint to ensure 'total_cost' is non-negative
+  constraint chk_total_cost check(total_cost >= 0),
+    -- Write your check constraint to restrict 'payment_status' values
+  constraint chk_payment_status check(payment_status in ('Pending', 'Confirmed', 'Cancelled', 'Refunded'))
 );
 
 
@@ -110,85 +102,43 @@ INSERT INTO Bookings (booking_id, user_id, match_id, seat_number, payment_status
 
 -- Queries :::
 -- Query 1: Retrieve all upcoming football matches belonging to the 'Champions League' where the match status is 'Available'.
-SELECT
-  match_id,
-  fixture,
-  base_ticket_price
-FROM
-  matches
-WHERE
-  tournament_category = 'Champions League'
-  AND match_status = 'Available'
+select match_id, fixture, base_ticket_price from matches
+where tournament_category='Champions League' and match_status='Available';
 
 -- Query 2: Search for all users whose full names start with 'Tanvir' or contain the phrase 'Haque' (case-insensitive).
-SELECT
-  user_id,
-  full_name,
-  email
-FROM
-  users
-WHERE
-  full_name LIKE 'Tanvir%'
-  OR full_name ILIKE '%Haque%';
+select user_id, full_name, email from users
+where full_name like 'Tanvir%' or
+full_name ilike '%haque%';
 
 -- Query 3: Retrieve all booking records where the payment status is missing (NULL), replacing the empty result with 'Action Required'.
-SELECT
-  booking_id,
-  user_id,
-  match_id,
-  coalesce(payment_status, 'Action Required') AS systematic_status
-FROM
-  bookings
-WHERE
-  payment_status IS NULL
-
+select   
+    booking_id,
+    user_id,
+    match_id, 
+    coalesce(payment_status, 'Action Required') as systematic_status from bookings
+where payment_status is null;
 
 -- Query 4: Retrieve match booking details along with the User's full name and the scheduled Match fixture teams.
-SELECT
-  b.booking_id,
-  u.full_name,
-  m.fixture,
-  b.total_cost
-FROM
-  bookings b
-  INNER JOIN users u ON b.user_id = u.user_id
-  INNER JOIN matches m ON b.match_id = m.match_id;
-
+select   
+    bookings.booking_id,
+    users.full_name,
+    matches.fixture,
+    bookings.total_cost
+from bookings
+inner join users on bookings.user_id = users.user_id
+inner join matches on bookings.match_id = matches.match_id;
+  
 
 -- Query 5: Display a comprehensive list of all users and their booking IDs, ensuring that fans who have never bought a ticket are still listed.
-SELECT
-  u.user_id,
-  u.full_name,
-  b.booking_id
-FROM
-  users u
-  LEFT JOIN bookings b ON u.user_id = b.user_id;
+select users.user_id, full_name, booking_id from users
+left join bookings on users.user_id = bookings.user_id;
 
 
 -- Query 6: Find all ticket bookings where the total cost is strictly higher than the average cost of all ticket bookings.
-SELECT
-  booking_id,
-  match_id,
-  total_cost
-FROM
-  bookings
-WHERE
-  total_cost > (
-    SELECT
-      avg(total_cost)
-    FROM
-      bookings
-  )
-
+select booking_id, match_id, total_cost from bookings
+where total_cost > (select avg(total_cost) from bookings);
 
 -- Query 7: Retrieve the top 2 most expensive matches sorted by base ticket price, skipping the absolute highest premium match.
-SELECT
-  match_id,
-  fixture,
-  base_ticket_price
-FROM
-  matches
-ORDER BY
-  base_ticket_price DESC
-LIMIT 2
-OFFSET 1
+select match_id, fixture, base_ticket_price from matches
+order by base_ticket_price desc 
+offset 1 limit 2;
